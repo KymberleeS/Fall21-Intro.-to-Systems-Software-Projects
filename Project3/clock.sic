@@ -1,0 +1,154 @@
+# start directive w/ starting address
+CLOCK    START   7E8C 
+# time variables/constants
+TIMDYA	 WORD 	 65
+TIMDYP	 WORD	 80
+SECNDS	 RESW	 1
+HRSEC	 RESW	 1
+HRSECB	 RESW	 1
+MINSEC	 RESW	 1
+REMNDR	 RESW	 1
+DPYHRA	 RESW	 1
+DPYHRB	 RESW	 1
+DPYMNA	 RESW	 1
+DPYMNB	 RESW	 1
+TENHRA	 RESW	 1
+TENMNA	 RESW	 1
+# constant integers 
+DISPLY	 WORD	 64
+ZERO	 WORD	 0
+SIXTY	 WORD	 60
+TWELVE	 WORD	 12
+TWTYFR	 WORD	 24
+TEN	 WORD	 10
+ASCDEC 	 WORD 	 48
+# most significant bit variables
+SEPBIT	 BYTE	 X'800000'
+SIGBIT	 BYTE	 X'800000'
+STRTWF	 RESW	 1
+# start program execution 
+BEGIN	 LDX	 ZERO
+# storing inputted seconds (SECSIN)
+	 LDA	 SECSIN
+	 AND	 SEPBIT
+	 COMP	 SIGBIT
+	 JEQ	 SUBTWF
+	 LDA	 SECSIN
+	 STA	 SECNDS
+	 J	 CONVRT
+SUBTWF	 STA	 STRTWF
+	 LDA	 SECSIN
+	 SUB	 STRTWF
+	 STA	 SECNDS
+# converting from seconds to hour and storing in HRSEC
+CONVRT	 LDA	 SECNDS
+	 DIV	 SIXTY
+	 DIV	 SIXTY
+	 STA	 HRSEC
+# converting from seconds to minutes and storing in MINSEC
+	 MUL	 SIXTY
+	 MUL	 SIXTY
+	 STA	 REMNDR
+	 LDA	 SECNDS
+	 SUB	 REMNDR
+	 DIV	 SIXTY
+	 STA	 MINSEC 
+# determine format based on SIGBIT
+	 LDA	 SECSIN
+	 AND	 SEPBIT
+	 COMP	 SIGBIT
+	 JEQ 	 FORMTA
+	 J	 FORMTB
+# 24 hour format
+FORMTA	 LDA	 HRSEC
+	 STA	 HRSECB
+	 LDA	 HRSECB
+	 COMP	 TWTYFR
+	 JEQ	 EQZERO
+	 J	 CALC
+# if hour equal to 24, replace with 0
+EQZERO	 LDA	 ZERO
+	 STA	 HRSECB
+	 J	 CALC
+# 12 hour format
+FORMTB	 LDA	 HRSEC
+	 COMP	 TWELVE
+# if less than 12, jump to STORE, else jump to SBTRCT
+	 JLT	 STORE
+	 J	 SBTRCT
+# store HRSEC in HRSECB; if 0, jump to EQUAL
+STORE	 LDA	 HRSEC
+	 COMP	 ZERO
+	 JEQ	 EQUAL
+	 STA	 HRSECB
+	 J	 CALC
+# if equal to 0, replace with 12
+EQUAL	 LDA	 TWELVE
+	 STA	 HRSECB
+	 J	 CALC
+# if greater than 12, subtract 12 
+SBTRCT	 SUB	 TWELVE
+	 STA	 HRSECB
+	 LDA	 HRSECB
+# calculate hour
+CALC	 DIV 	 TEN
+	 STA	 DPYHRA
+	 LDA	 DPYHRA
+	 MUL	 TEN
+	 STA	 TENHRA
+	 LDA	 HRSECB	
+	 SUB	 TENHRA
+	 STA	 DPYHRB
+# display hour
+	 LDA	 DPYHRA
+	 ADD	 ASCDEC
+	 WD	 DISPLY
+	 TIX	 1
+	 LDA	 DPYHRB
+	 ADD	 ASCDEC
+	 WD	 DISPLY
+	 TIX 	 1 
+# calculate minute
+	 LDA	 MINSEC
+	 DIV	 TEN
+	 STA	 DPYMNA
+	 LDA	 DPYMNA
+	 MUL	 TEN
+	 STA	 TENMNA
+	 LDA	 MINSEC
+	 SUB	 TENMNA
+	 STA	 DPYMNB
+# display minute
+	 LDA	 DPYMNA
+	 ADD	 ASCDEC
+	 WD	 DISPLY
+	 TIX	 1
+	 LDA	 DPYMNB
+	 ADD	 ASCDEC
+	 WD	 DISPLY
+	 TIX	 1
+# check SIGBIT for flag display
+	 LDA	 SECSIN
+	 AND	 SEPBIT
+	 COMP	 SIGBIT
+	 JEQ 	 DONE
+# load value in HRSEC and check condition
+	 LDA	 HRSEC
+	 COMP	 TWELVE
+	 JGT	 PM
+# add A flag if HRSECB < 12
+AM	 LDA	 TIMDYA
+	 WD	 DISPLY
+	 J	 DONE
+# add P flag if HRSECB > 12
+PM	 LDA	 TIMDYP
+	 WD	 DISPLY
+	 J 	 DONE
+# terminating the program
+DONE	 LDL 	 ZERO
+	 RSUB
+# seconds inputted (SECSIN) in last word of memory: 7FFD (can be set through VM);
+SECSIN	 RESW	 1	 
+ENDING	 END	 BEGIN
+	
+
